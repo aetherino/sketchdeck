@@ -88,6 +88,30 @@ Anything a step reveals starts hidden. `initial: { hidden: [...], dimmed: [...] 
 
 Every action except `wait` and `together` takes `delay` and `duration` in seconds. Leave them alone unless you need them.
 
+## Asides
+
+A step can step out of the diagram with a hand-written card, for what the diagram can't show: requirements, constraints, options considered. It lasts one step; the next step erases it and the scene comes back.
+
+```ts
+{
+  aside: {
+    layout: "center",                 // or "side" (the default)
+    title: "What checkout needs",
+    points: ["Say yes in under 500 ms", "Never lose an order"],
+    pin: ["checkout"],                // side only: these stay at full ink
+    color: "green",                   // title underline and bullets
+  },
+  notes: "These requirements decide between the options.",
+}
+```
+
+| layout | effect |
+|---|---|
+| `side` | A card on the right. The scene dims and moves left, `pin`ned elements stay at full ink. |
+| `center` | The card takes the stage. The scene fades to a ghost and the camera steps back. |
+
+A step can have an aside, a caption and actions together. Keep points to one line: side cards fit about 35 characters, centered cards about 50.
+
 ## Icons
 
 **Glyphs:** activity, archive, bell, bot, box, braces, brain, building, calendar, cart, chart, clock, cloud, code, container, cpu, credit-card, dashboard, database, eye, file, filter, fingerprint, folder, gauge, git-branch, globe, hard-drive, hash, image, inbox, key, laptop, layers, list, lock, mail, map, merge, message, monitor, network, package, phone, refresh, repeat, router, search, send, server, settings, shield, shield-check, sparkles, split, table, terminal, timer, truck, user, users, video, wallet, webhook, wifi, workflow, zap
@@ -110,6 +134,8 @@ There are no AWS icons; use a glyph (`server`, `database`, `cloud`) with an "AWS
 | off-stage | Something the camera means to show is cut off. |
 | empty-step | A step changes nothing. |
 | crowded | Too many shapes in view. |
+| aside-wrap | An aside point wraps to a second line. |
+| aside-crowded | An aside has more than four points, or the deck has more than three asides. |
 
 ## Presenting
 

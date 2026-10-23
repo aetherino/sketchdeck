@@ -227,11 +227,35 @@ export const ActionSchema: z.ZodType<Action, ActionInput> = z.lazy(() =>
   ),
 ) as unknown as z.ZodType<Action, ActionInput>;
 
+/**
+ * A step-out: a hand-written card for context the diagram can't show —
+ * requirements, constraints, options considered. It lasts one step.
+ */
+export const Aside = z
+  .strictObject({
+    title: z.string().optional(),
+    /** One short line each; they are written in one after another. */
+    points: z.array(z.string().min(1)).max(5).default([]),
+    /**
+     * "side": a card on the right; the scene dims and moves left.
+     * "center": the card takes the stage; the scene fades to a ghost.
+     */
+    layout: z.enum(["side", "center"]).default("side"),
+    /** Elements the card is about: they stay at full ink while the rest dims (side only). */
+    pin: Ids.optional(),
+    /** Tints the title underline and bullets. */
+    color: Color.optional(),
+  })
+  .refine((a) => a.title || a.points.length, { error: "an aside needs a title or at least one point" });
+export type Aside = z.infer<typeof Aside>;
+
 export const Step = z.strictObject({
   /** Speaker notes, shown in the presenter view. */
   notes: z.string().optional(),
   /** A line of on-screen text for this step. Off unless set. */
   caption: z.string().optional(),
+  /** A card that steps out of the diagram for this step. */
+  aside: Aside.optional(),
   do: z.array(ActionSchema).default([]),
 });
 export type Step = z.infer<typeof Step>;

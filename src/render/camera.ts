@@ -40,10 +40,11 @@ export function applyPose(camera: THREE.OrthographicCamera, pose: Pose): void {
 /**
  * The pose that looks along (azimuth, elevation) and fits every point inside
  * the 16:9 stage with a margin; `zoom` > 1 moves closer. `reserve` keeps that
- * fraction of the stage height clear at the bottom (for captions).
+ * fraction of the stage height clear at the bottom (for captions), `right`
+ * that fraction of its width clear on the right (for an aside card).
  */
 export function solvePose(
-  points: THREE.Vector3[], azimuth: number, elevation: number, zoom = 1, margin = 0.1, reserve = 0,
+  points: THREE.Vector3[], azimuth: number, elevation: number, zoom = 1, margin = 0.1, reserve = 0, right = 0,
 ): Pose {
   const center = new THREE.Box3().setFromPoints(points).getCenter(new THREE.Vector3());
   const probe = new THREE.OrthographicCamera();
@@ -58,15 +59,15 @@ export function solvePose(
     min.min(new THREE.Vector2(q.x, q.y));
     max.max(new THREE.Vector2(q.x, q.y));
   }
-  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(probe.quaternion);
+  const rightDir = new THREE.Vector3(1, 0, 0).applyQuaternion(probe.quaternion);
   const up = new THREE.Vector3(0, 1, 0).applyQuaternion(probe.quaternion);
   // Fit the content into the stage minus the reserved band, then shift the
   // view down so the content sits above the band.
   const usable = 1 - reserve;
-  const halfH = (Math.max((max.y - min.y) / 2 / usable, (max.x - min.x) / 2 / ASPECT, 0.5) * (1 + margin)) / zoom;
+  const halfH = (Math.max((max.y - min.y) / 2 / usable, (max.x - min.x) / 2 / ASPECT / (1 - right), 0.5) * (1 + margin)) / zoom;
   const target = center
     .clone()
-    .addScaledVector(right, (min.x + max.x) / 2)
+    .addScaledVector(rightDir, (min.x + max.x) / 2 + right * halfH * ASPECT)
     .addScaledVector(up, (min.y + max.y) / 2 - reserve * halfH);
   return { target, halfH, azimuth, elevation };
 }

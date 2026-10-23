@@ -1,4 +1,4 @@
-import type { Action, Deck } from "../schema/deck";
+import type { Action, Aside, Deck } from "../schema/deck";
 import {
   cameraFromKey, cloneState, currentScope, focusEmphasis, type CameraState, type SceneIndex, type State,
 } from "./state";
@@ -21,7 +21,33 @@ export const TIMING = {
   flowMin: 1.0,
   flowMax: 4.0,
   caption: 0.5,
+  /** The scene stepping back for an aside, or coming forward again. */
+  asideRecede: 0.7,
+  /** An aside card erasing itself. */
+  asideOut: 0.45,
 };
+
+/** When each part of an aside card writes itself in, in seconds from the card's start. */
+export function asideSchedule(a: Aside): {
+  outline: [number, number]; title: [number, number]; points: [number, number][]; duration: number;
+} {
+  const outline: [number, number] = [0.1, 0.7];
+  const title: [number, number] = [0.5, a.title ? 0.25 + a.title.length * 0.018 : 0];
+  let t = a.title ? title[0] + title[1] + 0.15 : 0.7;
+  const points = a.points.map((p): [number, number] => {
+    // Longer lines take longer to write, like a pen would.
+    const span: [number, number] = [t, Math.min(1.1, 0.3 + p.length * 0.014)];
+    t += span[1] + 0.2;
+    return span;
+  });
+  const ends = [outline, title, ...points].map(([s, d]) => s + d);
+  return { outline, title, points, duration: Math.max(...ends) };
+}
+
+/** How far the scene recedes for an aside: dimmed beside a side card, ghosted behind a centered one. */
+export function recedeOf(a: Aside | undefined): { side: number; center: number } {
+  return { side: a?.layout === "side" ? 1 : 0, center: a?.layout === "center" ? 1 : 0 };
+}
 
 export type Ease = "out" | "inOut" | "linear";
 
@@ -31,6 +57,7 @@ export type Track =
   | { kind: "camera"; from: CameraState; to: CameraState; start: number; dur: number }
   | { kind: "flow"; path: string[]; dots: number; start: number; dur: number }
   | { kind: "caption"; text?: string; start: number; dur: number }
+  | { kind: "aside"; from?: Aside; to?: Aside; start: number; dur: number }
   | { kind: "scope"; from: string; to: string; start: number; dur: number };
 
 export interface Timeline {
@@ -48,6 +75,12 @@ export interface Frame {
   camera: { from: CameraState; to: CameraState; k: number };
   flows: { path: string[]; dots: number; k: number }[];
   caption: { text?: string; opacity: number };
+  /**
+   * The aside card on screen: `t` seconds into writing itself (Infinity when
+   * settled), `erase` 0 … 1 while it goes away. `recede` is how far the scene
+   * has stepped back for it; `pins` stay at full ink.
+   */
+  aside: { card?: Aside; t: number; erase: number; recede: { side: number; center: number }; pins: string[] };
   /** The scene being shown, or a dive/surface between two scenes in progress. */
   scope: { from: string; to: string; k: number };
 }
@@ -87,6 +120,16 @@ export function compileStep(deck: Deck, index: SceneIndex, before: State, i: num
 
   if (step && step.caption !== before.caption) {
     tracks.push({ kind: "caption", text: step.caption, start: 0, dur: TIMING.caption });
+  }
+
+  const asideFrom = before.aside;
+  const asideTo = step?.aside;
+  if (asideFrom || asideTo) {
+    const out = asideFrom ? TIMING.asideOut : 0;
+    const dur = Math.max(TIMING.asideRecede, out + (asideTo ? asideSchedule(asideTo).duration : 0));
+    tracks.push({ kind: "aside", from: asideFrom, to: asideTo, start: 0, dur });
+    // Let the card clear before the scene starts changing underneath it.
+    if (asideFrom && !asideTo) cursor = Math.max(cursor, TIMING.asideOut * 0.7);
   }
 
   const emphTo = (id: string, to: number, start: number, dur: number) => {
@@ -182,6 +225,7 @@ export function compileStep(deck: Deck, index: SceneIndex, before: State, i: num
 
   for (const a of step?.do ?? []) cursor = schedule(a, cursor);
   state.caption = step?.caption;
+  state.aside = step?.aside;
 
   const duration = tracks.reduce((m, tr) => Math.max(m, tr.start + tr.dur), 0);
   return { duration, tracks, from, to: state };
@@ -196,6 +240,7 @@ export function frameAt(tl: Timeline, t: number): Frame {
     flows: [],
     caption: { text: tl.from.caption, opacity: tl.from.caption ? 1 : 0 },
     scope: { from: currentScope(tl.from), to: currentScope(tl.from), k: 1 },
+    aside: { card: tl.from.aside, t: Infinity, erase: 0, recede: recedeOf(tl.from.aside), pins: tl.from.aside?.pin ?? [] },
   };
   for (const tr of tl.tracks) {
     if (t < tr.start) continue;
@@ -217,6 +262,23 @@ export function frameAt(tl: Timeline, t: number): Frame {
         // Linear here; the player shapes each scene's fade and draw-in.
         f.scope = k < 1 ? { from: tr.from, to: tr.to, k } : { from: tr.to, to: tr.to, k: 1 };
         break;
+      case "aside": {
+        // The old card erases, then the new one writes itself in; meanwhile
+        // the scene eases from one recede to the other.
+        const local = t - tr.start;
+        const out = tr.from ? TIMING.asideOut : 0;
+        const r = ease.inOut(Math.min(1, local / TIMING.asideRecede));
+        const a = recedeOf(tr.from);
+        const b = recedeOf(tr.to);
+        const recede = { side: a.side + (b.side - a.side) * r, center: a.center + (b.center - a.center) * r };
+        const done = local >= tr.dur;
+        if (tr.from && local < out) {
+          f.aside = { card: tr.from, t: Infinity, erase: local / out, recede, pins: tr.from.pin ?? [] };
+        } else {
+          f.aside = { card: tr.to, t: done ? Infinity : local - out, erase: 0, recede, pins: tr.to?.pin ?? [] };
+        }
+        break;
+      }
       case "caption":
         // Cross-fade: the old caption fades out in the first half, the new in the second.
         f.caption = k < 0.5

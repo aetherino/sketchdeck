@@ -6,6 +6,7 @@ import type { Deck } from "../schema/deck";
 import { applyPose, STAGE_H, STAGE_W, type Pose } from "../render/camera";
 import { lineGlobals } from "../render/fatline";
 import { buildScene, themes, type BuiltElement, type Theme } from "../styles/sketch";
+import { AsideCard } from "./aside";
 import { Caption } from "./caption";
 import { lint, type LintIssue } from "./lint";
 import { Player } from "./player";
@@ -28,6 +29,7 @@ export class DeckView {
   theme: Theme = themes.paper;
   deck?: Deck;
   private caption?: Caption;
+  private aside: AsideCard;
   private built: BuiltElement[] = [];
   private resolved?: ResolvedScene;
   private index?: SceneIndex;
@@ -41,6 +43,7 @@ export class DeckView {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setClearColor(themes.paper.background);
     if (opts.caption) this.caption = new Caption(canvas);
+    this.aside = new AsideCard(canvas);
   }
 
   /** Build a deck. Returns the problems if it is invalid (and keeps the old scene). */
@@ -59,6 +62,7 @@ export class DeckView {
     this.resolved = resolved;
     this.renderer.setClearColor(theme.background);
     this.caption?.setTheme(theme);
+    this.aside.setTheme(theme);
 
     this.dispose();
     this.scene = new THREE.Scene();
@@ -72,7 +76,7 @@ export class DeckView {
     const silentCaption = { set() {}, setTheme() {}, layout() {} } as unknown as Caption;
     this.player = new Player({
       scene: this.scene, camera: this.camera, deck, index: this.index, resolved, built, theme,
-      caption: this.caption ?? silentCaption, invalidate: () => this.invalidate(),
+      caption: this.caption ?? silentCaption, aside: this.aside, invalidate: () => this.invalidate(),
     });
     this.player.onStep = (i) => this.onStep?.(i);
     return [];
@@ -88,6 +92,7 @@ export class DeckView {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.setSize(w, h);
     this.caption?.layout();
+    this.aside.layout();
     this.invalidate();
   }
 

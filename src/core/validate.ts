@@ -192,7 +192,19 @@ export function validate(input: unknown): Deck {
         return;
     }
   };
-  deck.steps.forEach((step, i) => step.do.forEach((a, j) => checkAction(`step ${i + 1} → action ${j + 1}`, a)));
+  deck.steps.forEach((step, i) => {
+    step.do.forEach((a, j) => checkAction(`step ${i + 1} → action ${j + 1}`, a));
+    const pins = step.aside?.pin ?? [];
+    if (pins.length && step.aside?.layout === "center") {
+      issues.push(`step ${i + 1} → aside: pin only works with layout "side" — a centered card covers the scene`);
+    }
+    checkIds(`step ${i + 1} → aside.pin`, pins);
+    const here = stack[stack.length - 1];
+    for (const id of pins) {
+      if (kinds.has(id) && scopeOf.get(id) !== here)
+        issues.push(`step ${i + 1} → aside.pin: '${id}' is not in the scene being shown`);
+    }
+  });
 
   if (issues.length) throw new DeckError(issues);
   return deck;

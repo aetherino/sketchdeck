@@ -5,6 +5,7 @@ import { currentScope, settled, type SceneIndex } from "../core/state";
 import type { Deck } from "../schema/deck";
 import { STAGE_H, STAGE_W } from "../render/camera";
 import type { BuiltElement } from "../styles/sketch";
+import { asideLines } from "./aside";
 import { CAPTION_BAND, type Player } from "./player";
 
 // Layout checks that need the real scene: text metrics, camera framing,
@@ -213,10 +214,23 @@ export function lint(opts: {
     }
   }
 
+  // Aside cards: a few short lines, or it's a slide pretending to be a note.
+  deck.steps.forEach((st, i) => {
+    const a = st.aside;
+    if (!a) return;
+    const step = i + 1;
+    if (a.points.length > 4) issues.push({ rule: "aside-crowded", step, ids: [], message: `the aside in step ${step} has ${a.points.length} points — keep it to four` });
+    asideLines(a).forEach((n, j) => {
+      if (n > 1) issues.push({ rule: "aside-wrap", step, ids: [], message: `point ${j + 1} of the aside in step ${step} wraps to ${n} lines — shorten it${a.layout === "side" ? " (side cards fit about 35 characters)" : ""}` });
+    });
+  });
+  const asides = deck.steps.filter((st) => st.aside).length;
+  if (asides > 3) issues.push({ rule: "aside-crowded", ids: [], message: `${asides} steps have asides — keep it to two or three, the diagram is the deck` });
+
   // One message per rule and set of ids is enough.
   const seen = new Set<string>();
   return issues.filter((x) => {
-    const key = `${x.rule}|${[...x.ids].sort().join(",")}|${x.rule === "empty-step" || x.rule === "crowded" ? x.step : ""}`;
+    const key = `${x.rule}|${[...x.ids].sort().join(",")}|${x.rule === "empty-step" || x.rule === "crowded" || x.rule.startsWith("aside") ? `${x.step}:${x.message}` : ""}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

@@ -17,6 +17,8 @@ The arc that works for a decision:
 5. **What stays.** What you deliberately did *not* change, and why.
 6. **Trade-off.** Name the cost. A decision without a cost reads as a sales pitch.
 
+**Asides are for context the diagram can't show.** Requirements before the decision (`center`), options weighed beside the scene they'd change (`side`, with `pin`). Never put the decision in an aside: it belongs in a caption, on the diagram. Two or three per deck at most; more and the deck turns into slides.
+
 Six to twelve steps. Fewer means you're skipping the problem; more means you're explaining implementation.
 
 ## 2. Layout

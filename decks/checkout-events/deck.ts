@@ -80,6 +80,31 @@ export default defineDeck({
       ],
     },
     {
+      notes: "Step out of the diagram. These three requirements decide between the options.",
+      aside: {
+        layout: "center",
+        title: "What checkout needs",
+        points: [
+          "Say yes to the customer in under 500 ms",
+          "Never lose an order, even mid-deploy",
+          "New listeners without touching checkout",
+        ],
+      },
+    },
+    {
+      notes: "We looked at three ways out. Only one meets all three requirements.",
+      aside: {
+        title: "Options we weighed",
+        points: [
+          "Faster email vendor: one symptom",
+          "Async calls: still knows everyone",
+          "One event: services listen",
+        ],
+        pin: ["checkout", "email", "analytics", "a-checkout-email", "a-checkout-analytics"],
+        color: "green",
+      },
+    },
+    {
       caption: "Decision: publish one event, let services listen",
       notes: "State the decision before the detail. Email and analytics never needed to block the order.",
       do: [

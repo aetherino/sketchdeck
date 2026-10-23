@@ -1,12 +1,13 @@
 import * as THREE from "three";
 import { toWorld, type ResolvedScene, type ResolvedScope } from "../core/resolve";
 import { settled, type CameraState, type SceneIndex } from "../core/state";
-import { compileStep, frameAt, type Frame, type Timeline } from "../core/timeline";
+import { compileStep, frameAt, recedeOf, type Frame, type Timeline } from "../core/timeline";
 import type { Deck } from "../schema/deck";
 import { applyPose, lerpPose, solvePose, type Pose } from "../render/camera";
 import { emphasizable, type EmphasisFn } from "../render/emphasis";
 import { FlowDots } from "../render/flow";
 import type { BuiltElement, Theme } from "../styles/sketch";
+import { ASIDE_RIGHT, type AsideCard } from "./aside";
 import type { Caption } from "./caption";
 
 // Plays a deck: unfolds a step's timeline, then rests. Going back jumps
@@ -14,6 +15,12 @@ import type { Caption } from "./caption";
 
 /** Fraction of the stage height kept clear at the bottom when a deck has captions. */
 export const CAPTION_BAND = 0.13;
+/** Where things not pinned to a side card settle: most of the way to dimmed. */
+const SIDE_DIM = -0.85;
+/** How far the scene fades behind a centered card: a ghost of itself. */
+const CENTER_GHOST = 0.9;
+/** A centered card also pulls the camera back a little, as if stepping away. */
+const CENTER_PULLBACK = 0.12;
 
 interface Entry {
   built: BuiltElement;
@@ -29,6 +36,7 @@ export interface PlayerOptions {
   built: BuiltElement[];
   theme: Theme;
   caption: Caption;
+  aside: AsideCard;
   /** Ask for a frame to be drawn. */
   invalidate: () => void;
 }
@@ -143,7 +151,14 @@ export class Player {
   // ── Applying a frame ───────────────────────────────────────────────────────
 
   private apply(f: Frame): void {
-    this.applyCamera(f.camera);
+    this.applyCamera(f.camera, f.aside.recede);
+    const { recede } = f.aside;
+    // Pinned elements keep their planes as context, like focus does.
+    const pinned = new Set(f.aside.pins);
+    for (const id of f.aside.pins) {
+      const layer = this.o.index.layerOf[id];
+      if (layer) pinned.add(layer);
+    }
     const { from, to, k } = f.scope;
     const diving = from !== to && this.o.index.parentOf[to] === from;
     const smooth = (x: number) => x * x * (3 - 2 * x);
@@ -167,20 +182,31 @@ export class Player {
       } else {
         draw = 0;
       }
+      let emph = f.emph[id] ?? 0;
+      if (!pinned.has(id)) emph += (SIDE_DIM - emph) * recede.side;
+      hide = Math.max(hide, recede.center * CENTER_GHOST);
       e.built.sketch.setDraw(draw);
-      e.emphasize(f.emph[id] ?? 0, hide);
-      this.lastEmphasis.set(id, [f.emph[id] ?? 0, hide]);
+      e.emphasize(emph, hide);
+      this.lastEmphasis.set(id, [emph, hide]);
     }
     this.applyFlows(f.flows);
     this.o.caption.set(f.caption.text, f.caption.opacity);
+    this.o.aside.set(f.aside.card, f.aside.t, f.aside.erase);
   }
 
-  private applyCamera(c: Frame["camera"]): void {
-    if (!this.exploring) {
-      const pose = c.k >= 1 ? this.poseFor(c.to) : lerpPose(this.poseFor(c.from), this.poseFor(c.to), c.k);
-      applyPose(this.o.camera, pose);
-    }
+  private applyCamera(c: Frame["camera"], recede: Frame["aside"]["recede"]): void {
+    if (!this.exploring) applyPose(this.o.camera, this.framing(c, recede));
     this.refreshView();
+  }
+
+  /** The scripted camera, moved aside for a side card or pulled back for a centered one. */
+  private framing(c: Frame["camera"], recede: Frame["aside"]["recede"]): Pose {
+    const at = (right: number) =>
+      c.k >= 1 ? this.poseFor(c.to, right) : lerpPose(this.poseFor(c.from, right), this.poseFor(c.to, right), c.k);
+    let pose = at(0);
+    if (recede.side > 0) pose = lerpPose(pose, at(ASIDE_RIGHT), recede.side);
+    if (recede.center > 0) pose = { ...pose, halfH: pose.halfH * (1 + CENTER_PULLBACK * recede.center) };
+    return pose;
   }
 
   /** Billboards, silhouettes and arrows only care about direction: refresh them when it changes. */
@@ -205,15 +231,16 @@ export class Player {
 
   /** Where the current step's camera rests. */
   restingPose(): Pose {
-    return this.poseFor(this.timelineFor(this.step).to.camera);
+    const to = this.timelineFor(this.step).to;
+    return this.framing({ from: to.camera, to: to.camera, k: 1 }, recedeOf(to.aside));
   }
 
-  private poseFor(c: CameraState): Pose {
-    const key = JSON.stringify(c);
+  private poseFor(c: CameraState, right = 0): Pose {
+    const key = `${JSON.stringify(c)}|${right}`;
     let pose = this.poses.get(key);
     if (!pose) {
       const reserve = this.o.deck.steps.some((st) => st.caption) ? CAPTION_BAND : 0;
-      pose = solvePose(this.pointsFor(c.scope, c.fit), c.azimuth, c.elevation, c.zoom, c.fit ? 0.18 : 0.1, reserve);
+      pose = solvePose(this.pointsFor(c.scope, c.fit), c.azimuth, c.elevation, c.zoom, c.fit ? 0.18 : 0.1, reserve, right);
       this.poses.set(key, pose);
     }
     return pose;

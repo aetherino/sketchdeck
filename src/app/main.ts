@@ -4,6 +4,7 @@
 import { preloadFont } from "troika-three-text";
 import deckInput from "@deck";
 import { fontUrl } from "../styles/sketch";
+import { handFont } from "./caption";
 import { Explore } from "./explore";
 import { showErrors } from "./overlay";
 import { PresenterUI } from "./presenter";
@@ -184,7 +185,8 @@ const api = {
 };
 Object.assign(window, { __sketchdeck: api });
 
-preloadFont({ font: fontUrl }, () => {
+// Both fonts first: the scene's text, and the page's (aside cards measure it).
+preloadFont({ font: fontUrl }, () => void handFont.then(() => {
   layout();
   if (build(deckInput)) {
     const start = Number(params.get("step") ?? 0) - 1;
@@ -194,7 +196,7 @@ preloadFont({ font: fontUrl }, () => {
   }
   api.ready = true;
   (window as unknown as { __ready: boolean }).__ready = true;
-});
+}));
 
 if (import.meta.hot) {
   import.meta.hot.accept("@deck", (mod) => {

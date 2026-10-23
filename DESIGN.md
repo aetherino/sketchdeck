@@ -236,3 +236,11 @@ Taste risk is front-loaded: if the look is wrong, nothing else matters.
 
 **Taste (M7)**
 - `docs/TASTE.md` is the taste guide, `docs/AUTHORING.md` the format reference, `CLAUDE.md` the workflow. `decks/checkout-events` is the reference deck: 10 steps, three layers, one dive, flows, a zoom, and a named trade-off.
+
+## 12. Asides
+
+- A step-level `aside` (not an action): like the caption, it is part of the step's settled state and lasts one step, so going back and forth needs no bookkeeping.
+- Drawn as SVG in stage pixels over the canvas, not in three.js: crisp text, real font metrics for wrapping, and the stroke draw-in is a dash offset. Strokes come from the same rough.js port, a little looser because the card is big.
+- The card's schedule (outline, title, then each point, longer lines take longer) is a pure function in the timeline, so frames stay a pure function of time and renders match playback.
+- The scene recedes through the existing emphasis channel: `side` lerps unpinned elements toward dim and refits the camera into the left 58% of the stage; `center` fades the scene to a 0.9 ghost and pulls the camera back 12%.
+- `pin` is side-only (a centered card covers the scene). Pinned elements keep their planes as context, like `focus`.

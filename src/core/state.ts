@@ -1,4 +1,4 @@
-import type { Action, CameraKey, Deck } from "../schema/deck";
+import type { Action, Aside, CameraKey, Deck } from "../schema/deck";
 import { ROOT, scopesOf } from "./validate";
 
 // What the scene looks like once a step has settled. A pure function of the
@@ -21,6 +21,8 @@ export interface State {
   emphasis: Record<string, Emphasis>;
   camera: CameraState;
   caption?: string;
+  /** The step's aside card, if it has one. Like the caption, it lasts one step. */
+  aside?: Aside;
   /** Scenes dived into, outermost first: [ROOT, …]. */
   scope: string[];
   /** The camera to return to when surfacing from each level. */
@@ -114,6 +116,7 @@ export function cloneState(s: State): State {
     emphasis: { ...s.emphasis },
     camera: { ...s.camera },
     caption: s.caption,
+    aside: s.aside,
     scope: [...s.scope],
     cameras: s.cameras.map((c) => ({ ...c })),
   };
@@ -187,6 +190,7 @@ export function settled(deck: Deck, index: SceneIndex, i: number): State {
   for (let k = 0; k <= Math.min(i, deck.steps.length - 1); k++) {
     for (const a of deck.steps[k].do) applyAction(s, a, index);
     s.caption = deck.steps[k].caption;
+    s.aside = deck.steps[k].aside;
   }
   return s;
 }

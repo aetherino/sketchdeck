@@ -4,7 +4,8 @@ import type { Theme } from "../styles/sketch";
 // The step caption: one handwritten line near the bottom of the stage.
 
 const face = new FontFace("Excalifont", `url(${fontUrl})`);
-void face.load().then((f) => document.fonts.add(f));
+/** The handwriting font for page text (captions, aside cards), once it can be measured. */
+export const handFont: Promise<void> = face.load().then((f) => void document.fonts.add(f));
 
 export class Caption {
   private el = document.createElement("div");
