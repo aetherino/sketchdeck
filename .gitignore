@@ -1,0 +1,4 @@
+node_modules/
+decks/*/out/
+.tsconfig.check.*.json
+dist/
