@@ -23,6 +23,8 @@ export interface State {
   caption?: string;
   /** The step's aside card, if it has one. Like the caption, it lasts one step. */
   aside?: Aside;
+  /** The layer this step zooms onto, if any. Lasts one step. */
+  plane?: string;
   /** Scenes dived into, outermost first: [ROOT, …]. */
   scope: string[];
   /** The camera to return to when surfacing from each level. */
@@ -117,6 +119,7 @@ export function cloneState(s: State): State {
     camera: { ...s.camera },
     caption: s.caption,
     aside: s.aside,
+    plane: s.plane,
     scope: [...s.scope],
     cameras: s.cameras.map((c) => ({ ...c })),
   };
@@ -191,6 +194,7 @@ export function settled(deck: Deck, index: SceneIndex, i: number): State {
     for (const a of deck.steps[k].do) applyAction(s, a, index);
     s.caption = deck.steps[k].caption;
     s.aside = deck.steps[k].aside;
+    s.plane = deck.steps[k].plane;
   }
   return s;
 }

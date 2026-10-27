@@ -90,6 +90,7 @@ A deck is **one continuous scene** driven by an ordered list of steps (no separa
 ### 4.3 Camera
 - The default is **2.5D**: an isometric-ish view whose angle and zoom are authored per keyframe, within a constrained, flattering range.
 - Camera moves between keyframes are smooth and eased, never jarring.
+- A step can **zoom onto one plane** for that step only: the camera rises over the layer and the other layers fade away, then pulls back when a step without it follows.
 
 ## 5. Visual style
 

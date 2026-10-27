@@ -244,3 +244,9 @@ Taste risk is front-loaded: if the look is wrong, nothing else matters.
 - The card's schedule (outline, title, then each point, longer lines take longer) is a pure function in the timeline, so frames stay a pure function of time and renders match playback.
 - The scene recedes through the existing emphasis channel: `side` lerps unpinned elements toward dim and refits the camera into the left 58% of the stage; `center` fades the scene to a 0.9 ghost and pulls the camera back 12%.
 - `pin` is side-only (a centered card covers the scene). Pinned elements keep their planes as context, like `focus`.
+
+## 13. Planes
+
+- A step-level `plane` (a layer id), for the same reason as `aside`: it's part of the step's settled state and lasts one step, so going back and forth needs no bookkeeping, and a run of steps on one plane holds still.
+- The camera fits the layer's bounds at a steeper 52° elevation, keeping the step's azimuth; moving on or off a plane lerps between poses like any camera move, and side cards still refit around it.
+- Everything off the plane fades out through the emphasis channel's `hide`, including arrows that leave it. Lint uses the same test, so faded labels don't count as collisions.

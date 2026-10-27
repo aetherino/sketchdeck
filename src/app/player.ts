@@ -21,6 +21,10 @@ const SIDE_DIM = -0.85;
 const CENTER_GHOST = 0.9;
 /** A centered card also pulls the camera back a little, as if stepping away. */
 const CENTER_PULLBACK = 0.12;
+/** Zoomed onto a plane, the camera looks down this steeply. */
+const PLANE_ELEVATION = 52;
+/** How far the other layers fade while zoomed onto a plane. */
+const PLANE_HIDE = 1;
 
 interface Entry {
   built: BuiltElement;
@@ -48,6 +52,8 @@ export class Player {
   private flows = new Map<string, FlowDots>();
   private lastView = "";
   private lastEmphasis = new Map<string, [number, number]>();
+  /** Arrow id → the layers of its two ends. */
+  private arrowLayers = new Map<string, [string | undefined, string | undefined]>();
   /** While exploring, the viewer holds the camera; steps leave it alone. */
   exploring = false;
   private startedAt = -1;
@@ -58,6 +64,9 @@ export class Player {
 
   constructor(private o: PlayerOptions) {
     for (const b of o.built) this.entries.set(b.id, { built: b, emphasize: emphasizable(b.sketch.object, o.theme.paper, o.theme.dim) });
+    for (const sc of o.resolved.scopes) {
+      for (const a of sc.arrows) this.arrowLayers.set(a.el.id, [o.index.layerOf[a.el.from], o.index.layerOf[a.el.to]]);
+    }
   }
 
   /** Number of steps (a deck without steps has one implicit step). */
@@ -151,7 +160,7 @@ export class Player {
   // ── Applying a frame ───────────────────────────────────────────────────────
 
   private apply(f: Frame): void {
-    this.applyCamera(f.camera, f.aside.recede);
+    this.applyCamera(f.camera, f.aside.recede, f.plane);
     const { recede } = f.aside;
     // Pinned elements keep their planes as context, like focus does.
     const pinned = new Set(f.aside.pins);
@@ -184,7 +193,7 @@ export class Player {
       }
       let emph = f.emph[id] ?? 0;
       if (!pinned.has(id)) emph += (SIDE_DIM - emph) * recede.side;
-      hide = Math.max(hide, recede.center * CENTER_GHOST);
+      hide = Math.max(hide, recede.center * CENTER_GHOST, this.offPlane(id, f.plane) * PLANE_HIDE);
       e.built.sketch.setDraw(draw);
       e.emphasize(emph, hide);
       this.lastEmphasis.set(id, [emph, hide]);
@@ -194,15 +203,33 @@ export class Player {
     this.o.aside.set(f.aside.card, f.aside.t, f.aside.erase);
   }
 
-  private applyCamera(c: Frame["camera"], recede: Frame["aside"]["recede"]): void {
-    if (!this.exploring) applyPose(this.o.camera, this.framing(c, recede));
+  /** How far an element is faded for being off the zoomed plane: 0 on it (or no plane), 1 off it. */
+  offPlane(id: string, plane: Frame["plane"]): number {
+    const { layerOf, scopeOf } = this.o.index;
+    const off = (layer?: string) => {
+      if (!layer || id === layer) return 0;
+      if (scopeOf[id] !== scopeOf[layer]) return 0; // other scenes are left to the scope fade
+      const ends = this.arrowLayers.get(id);
+      if (ends) return ends[0] === layer && ends[1] === layer ? 0 : 1; // arrows stay if they don't leave the plane
+      return layerOf[id] === layer ? 0 : 1; // other layers' planes have no layer: they fade too
+    };
+    const a = off(plane.from);
+    return a + (off(plane.to) - a) * plane.k;
+  }
+
+  private applyCamera(c: Frame["camera"], recede: Frame["aside"]["recede"], plane: Frame["plane"]): void {
+    if (!this.exploring) applyPose(this.o.camera, this.framing(c, recede, plane));
     this.refreshView();
   }
 
-  /** The scripted camera, moved aside for a side card or pulled back for a centered one. */
-  private framing(c: Frame["camera"], recede: Frame["aside"]["recede"]): Pose {
-    const at = (right: number) =>
+  /** The scripted camera: risen over a plane, moved aside for a side card, or pulled back for a centered one. */
+  private framing(c: Frame["camera"], recede: Frame["aside"]["recede"], plane: Frame["plane"]): Pose {
+    const scripted = (right: number) =>
       c.k >= 1 ? this.poseFor(c.to, right) : lerpPose(this.poseFor(c.from, right), this.poseFor(c.to, right), c.k);
+    const onto = (layer: string | undefined, right: number) =>
+      layer ? this.poseFor({ ...c.to, fit: [layer], elevation: PLANE_ELEVATION, zoom: 1 }, right) : scripted(right);
+    const at = (right: number) =>
+      plane.from === plane.to ? onto(plane.to, right) : lerpPose(onto(plane.from, right), onto(plane.to, right), plane.k);
     let pose = at(0);
     if (recede.side > 0) pose = lerpPose(pose, at(ASIDE_RIGHT), recede.side);
     if (recede.center > 0) pose = { ...pose, halfH: pose.halfH * (1 + CENTER_PULLBACK * recede.center) };
@@ -232,7 +259,7 @@ export class Player {
   /** Where the current step's camera rests. */
   restingPose(): Pose {
     const to = this.timelineFor(this.step).to;
-    return this.framing({ from: to.camera, to: to.camera, k: 1 }, recedeOf(to.aside));
+    return this.framing({ from: to.camera, to: to.camera, k: 1 }, recedeOf(to.aside), { from: to.plane, to: to.plane, k: 1 });
   }
 
   private poseFor(c: CameraState, right = 0): Pose {

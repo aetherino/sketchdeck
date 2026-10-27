@@ -168,7 +168,10 @@ export function lint(opts: {
     // Only the scene being shown is on screen.
     const here = currentScope(state);
     const transform = transformOf.get(here)!;
-    const visible = [...shapes.values()].filter((s) => state.visible[s.el.id] && index.scopeOf[s.el.id] === here);
+    // Zoomed onto a plane, the other layers have faded away.
+    const plane = { from: state.plane, to: state.plane, k: 1 };
+    const shown = (id: string) => state.visible[id] && index.scopeOf[id] === here && player.offPlane(id, plane) < 1;
+    const visible = [...shapes.values()].filter((s) => shown(s.el.id));
     if (visible.length > MAX_IN_VIEW) {
       issues.push({ rule: "crowded", step, ids: [], message: `step ${step} shows ${visible.length} shapes (aim for ≤ ${MAX_IN_VIEW}) — split detail into a nested scene` });
     }
@@ -186,7 +189,7 @@ export function lint(opts: {
     // Labels colliding with each other, or with the caption band.
     const rects: { id: string; r: Rect }[] = [];
     for (const { id, ts } of texts) {
-      if (!state.visible[id] || index.scopeOf[id] !== here) continue;
+      if (!shown(id)) continue;
       for (const t of ts) {
         const bb = t.geometry.boundingBox;
         if (!t.visible || !bb) continue;

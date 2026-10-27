@@ -200,6 +200,11 @@ export function validate(input: unknown): Deck {
     }
     checkIds(`step ${i + 1} → aside.pin`, pins);
     const here = stack[stack.length - 1];
+    if (step.plane) {
+      const layers = scopes.find((sc) => sc.id === here)!.layers.map((l) => l.id);
+      if (!layers.includes(step.plane))
+        issues.push(`step ${i + 1} → plane: '${step.plane}' is not a layer of the scene being shown (layers: ${layers.join(", ")})`);
+    }
     for (const id of pins) {
       if (kinds.has(id) && scopeOf.get(id) !== here)
         issues.push(`step ${i + 1} → aside.pin: '${id}' is not in the scene being shown`);

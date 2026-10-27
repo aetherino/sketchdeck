@@ -256,6 +256,11 @@ export const Step = z.strictObject({
   caption: z.string().optional(),
   /** A card that steps out of the diagram for this step. */
   aside: Aside.optional(),
+  /**
+   * Zoom onto one layer for this step: the camera rises over it and the other
+   * layers fade away. Lasts one step; consecutive steps on the same plane hold still.
+   */
+  plane: Id.optional(),
   do: z.array(ActionSchema).default([]),
 });
 export type Step = z.infer<typeof Step>;

@@ -25,6 +25,8 @@ export const TIMING = {
   asideRecede: 0.7,
   /** An aside card erasing itself. */
   asideOut: 0.45,
+  /** The camera rising onto a plane, or settling back. */
+  plane: 1.4,
 };
 
 /** When each part of an aside card writes itself in, in seconds from the card's start. */
@@ -58,6 +60,7 @@ export type Track =
   | { kind: "flow"; path: string[]; dots: number; start: number; dur: number }
   | { kind: "caption"; text?: string; start: number; dur: number }
   | { kind: "aside"; from?: Aside; to?: Aside; start: number; dur: number }
+  | { kind: "plane"; from?: string; to?: string; start: number; dur: number }
   | { kind: "scope"; from: string; to: string; start: number; dur: number };
 
 export interface Timeline {
@@ -83,6 +86,8 @@ export interface Frame {
   aside: { card?: Aside; t: number; erase: number; recede: { side: number; center: number }; pins: string[] };
   /** The scene being shown, or a dive/surface between two scenes in progress. */
   scope: { from: string; to: string; k: number };
+  /** The layer zoomed onto (undefined: the whole scene), or a move between two in progress. */
+  plane: { from?: string; to?: string; k: number };
 }
 
 export interface FlowLength {
@@ -130,6 +135,13 @@ export function compileStep(deck: Deck, index: SceneIndex, before: State, i: num
     tracks.push({ kind: "aside", from: asideFrom, to: asideTo, start: 0, dur });
     // Let the card clear before the scene starts changing underneath it.
     if (asideFrom && !asideTo) cursor = Math.max(cursor, TIMING.asideOut * 0.7);
+  }
+
+  if (step?.plane !== before.plane) {
+    // Clear any card first, so the scene isn't moving under it.
+    const start = asideFrom && !asideTo ? TIMING.asideOut * 0.7 : 0;
+    tracks.push({ kind: "plane", from: before.plane, to: step?.plane, start, dur: TIMING.plane });
+    cursor = Math.max(cursor, start + TIMING.plane * 0.6);
   }
 
   const emphTo = (id: string, to: number, start: number, dur: number) => {
@@ -226,6 +238,7 @@ export function compileStep(deck: Deck, index: SceneIndex, before: State, i: num
   for (const a of step?.do ?? []) cursor = schedule(a, cursor);
   state.caption = step?.caption;
   state.aside = step?.aside;
+  state.plane = step?.plane;
 
   const duration = tracks.reduce((m, tr) => Math.max(m, tr.start + tr.dur), 0);
   return { duration, tracks, from, to: state };
@@ -241,6 +254,7 @@ export function frameAt(tl: Timeline, t: number): Frame {
     caption: { text: tl.from.caption, opacity: tl.from.caption ? 1 : 0 },
     scope: { from: currentScope(tl.from), to: currentScope(tl.from), k: 1 },
     aside: { card: tl.from.aside, t: Infinity, erase: 0, recede: recedeOf(tl.from.aside), pins: tl.from.aside?.pin ?? [] },
+    plane: { from: tl.from.plane, to: tl.from.plane, k: 1 },
   };
   for (const tr of tl.tracks) {
     if (t < tr.start) continue;
@@ -279,6 +293,9 @@ export function frameAt(tl: Timeline, t: number): Frame {
         }
         break;
       }
+      case "plane":
+        f.plane = k < 1 ? { from: tr.from, to: tr.to, k: ease.inOut(k) } : { from: tr.to, to: tr.to, k: 1 };
+        break;
       case "caption":
         // Cross-fade: the old caption fades out in the first half, the new in the second.
         f.caption = k < 0.5

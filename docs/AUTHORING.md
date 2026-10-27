@@ -112,6 +112,18 @@ A step can step out of the diagram with a hand-written card, for what the diagra
 
 A step can have an aside, a caption and actions together. Keep points to one line: side cards fit about 35 characters, centered cards about 50.
 
+## Planes
+
+A step can zoom onto one layer to talk about what's on it. The camera rises over that plane and the other layers fade away. It lasts one step: the next step without `plane` pulls back to the whole scene. Consecutive steps on the same plane hold still, so a tour of its parts is one step per part.
+
+```ts
+{ plane: "services", caption: "The API", do: [{ focus: ["api"] }] },
+{ plane: "services", caption: "The worker", do: [{ focus: ["worker"] }] },
+{ caption: "Back to the whole system", do: [{ clear: true }] },
+```
+
+Arrows stay only if both ends are on the plane. `focus` and `highlight` persist as usual, so `clear` when you pull back.
+
 ## Icons
 
 **Glyphs:** activity, archive, bell, bot, box, braces, brain, building, calendar, cart, chart, clock, cloud, code, container, cpu, credit-card, dashboard, database, eye, file, filter, fingerprint, folder, gauge, git-branch, globe, hard-drive, hash, image, inbox, key, laptop, layers, list, lock, mail, map, merge, message, monitor, network, package, phone, refresh, repeat, router, search, send, server, settings, shield, shield-check, sparkles, split, table, terminal, timer, truck, user, users, video, wallet, webhook, wifi, workflow, zap
