@@ -25,9 +25,30 @@ if (isPresenter) {
   preview = new DeckView(canvas, { caption: false });
 }
 
+// The keys, faint in the corner; they wake up when the mouse moves.
+const keys = document.createElement("div");
+keys.textContent = "← → step · drag to explore · R reset · F fullscreen · P notes";
+Object.assign(keys.style, {
+  position: "absolute",
+  fontFamily: "Excalifont, cursive",
+  pointerEvents: "none",
+  whiteSpace: "nowrap",
+  opacity: "0.3",
+  transition: "opacity 400ms",
+});
+// Not in presenter view (it has its own), nor in the CLI's renders.
+if (!isPresenter && !navigator.webdriver) document.body.appendChild(keys);
+
 function layout(): void {
   view.layout(presenter ? presenter.stageBox() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight });
   explore.layout();
+  const r = view.canvas.getBoundingClientRect();
+  Object.assign(keys.style, {
+    right: `${window.innerWidth - r.right + r.width * 0.02}px`,
+    bottom: `${window.innerHeight - r.bottom + r.height * 0.02}px`,
+    fontSize: `${r.height * 0.016}px`,
+    color: view.theme.inkSoft,
+  });
   if (presenter && preview) preview.layout(presenter.previewBox());
 }
 
@@ -131,12 +152,9 @@ window.addEventListener("keydown", (ev) => {
       break;
     case "r":
     case "R":
-      navigate("replay");
-      break;
-    case "e":
-    case "E":
+      // Back on script if you wandered off; otherwise replay the step.
       if (explore.active) explore.exit();
-      else explore.enter();
+      else navigate("replay");
       break;
     case "Escape":
       if (!explore.active) return;
@@ -161,8 +179,12 @@ window.addEventListener("keydown", (ev) => {
 let idle: ReturnType<typeof setTimeout> | undefined;
 window.addEventListener("mousemove", () => {
   document.body.style.cursor = "";
+  keys.style.opacity = "0.7";
   clearTimeout(idle);
-  if (!isPresenter) idle = setTimeout(() => !explore.active && (document.body.style.cursor = "none"), 2500);
+  idle = setTimeout(() => {
+    keys.style.opacity = "0.3";
+    if (!isPresenter && !explore.active) document.body.style.cursor = "none";
+  }, 2500);
 });
 
 new ResizeObserver(layout).observe(document.documentElement);

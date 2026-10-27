@@ -63,7 +63,7 @@ export class PresenterUI {
     this.notes.className = "pv-notes";
     const hint = document.createElement("div");
     hint.className = "pv-hint";
-    hint.textContent = "→ next · ← back · R replay · E explore · F fullscreen";
+    hint.textContent = "→ next · ← back · drag explore · R reset · F fullscreen";
     side.append(nextLabel, this.next, notesLabel, this.notes, hint);
 
     document.body.append(header, side);

@@ -128,7 +128,7 @@ The pipeline:
 4. **Hatch fills.** Seeded diagonal hatch lines are generated in world space on the top face, then clipped to the face polygon. Side faces get a flat, slightly darker tone instead of hatching, which gives the 2.5D read without noise.
 5. **Labels.** troika text in Excalifont, **camera-facing** (billboarded) so they are always legible, with a subtle paper-colored halo. Boxes put the label on the top face. Cylinders put it on the camera-facing side of the body, below a "lid" ring near the top. Layer names are written flat on the plane along its front edge.
 6. **Icons.** A small hand-traced SVG set, converted to polylines. They go through the same rough-stroke and fat-line pipeline, so they match the look.
-7. **Camera.** An `OrthographicCamera`, which gives a clean isometric feel with no perspective distortion. Authored keyframes stay within a flattering range (elevation about 25–60°). Explore mode attaches OrbitControls with wider limits. `Esc` tweens back to the step's keyframe.
+7. **Camera.** An `OrthographicCamera`, which gives a clean isometric feel with no perspective distortion. Authored keyframes stay within a flattering range (elevation about 25–60°). Explore is always on: dragging attaches OrbitControls with wider limits. `R` or `Esc` tweens back to the step's keyframe.
 8. **Stage.** A fixed 1920×1080 logical canvas, scaled and letterboxed to the window, at device pixel ratio.
 
 Performance budget: 60 elements × ~12 strokes plus hatching is a few thousand instanced quads. That is trivial for a laptop GPU.

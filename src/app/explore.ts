@@ -1,9 +1,10 @@
+import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { lerpPose, poseOf, type Pose } from "../render/camera";
 import type { DeckView } from "./view";
 
-// The escape hatch: free orbit, pan and zoom around the current scene.
-// Esc glides back to where the step's camera rests.
+// Free orbit, pan and zoom, always on: grab the scene and it's yours.
+// R or Esc glides back to where the step's camera rests; the arrow keys snap back and move on.
 
 const RETURN_SECONDS = 0.9;
 
@@ -14,7 +15,7 @@ export class Explore {
 
   constructor(private view: DeckView) {
     const c = new OrbitControls(view.camera, view.canvas);
-    c.enabled = false;
+    c.enabled = true;
     c.enableDamping = false; // nothing drifts after you let go
     c.screenSpacePanning = true;
     c.rotateSpeed = 0.6;
@@ -27,9 +28,11 @@ export class Explore {
       view.player?.cameraMoved();
       view.invalidate();
     });
+    // The first drag, pinch or scroll takes the camera off the script.
+    c.addEventListener("start", () => this.enter());
     this.controls = c;
 
-    this.badge.textContent = "exploring · esc to return";
+    this.badge.textContent = "exploring · R to return";
     Object.assign(this.badge.style, {
       position: "absolute",
       fontFamily: "Excalifont, cursive",
@@ -54,12 +57,15 @@ export class Explore {
     const player = this.view.player;
     if (!player || this.active) return;
     if (player.animating) player.show(player.step);
+    this.view.onFrame = undefined; // a drag during the glide back keeps the camera where it is
     this.active = true;
     player.exploring = true;
-    this.controls.target.copy(player.restingPose().target);
-    this.controls.enabled = true;
+    // Orbit around the point on the view axis nearest the step's focus, so nothing jumps.
+    const cam = this.view.camera;
+    const ahead = cam.getWorldDirection(new THREE.Vector3());
+    const rest = player.restingPose().target;
+    this.controls.target.copy(cam.position).addScaledVector(ahead, rest.clone().sub(cam.position).dot(ahead));
     this.controls.update();
-    this.view.canvas.style.cursor = "grab";
     this.layout();
     this.badge.style.opacity = "1";
   }
@@ -69,8 +75,6 @@ export class Explore {
     const player = this.view.player;
     if (!player || !this.active) return;
     this.active = false;
-    this.controls.enabled = false;
-    this.view.canvas.style.cursor = "";
     this.badge.style.opacity = "0";
     const to = player.restingPose();
     if (!animated) {

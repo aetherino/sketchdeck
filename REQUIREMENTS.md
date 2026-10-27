@@ -111,10 +111,13 @@ A deck is **one continuous scene** driven by an ordered list of steps (no separa
 | → / Space / PageDown (clickers) | Next step (play its unfold). |
 | ← / PageUp | Previous step (settled state). |
 | Home / End | First / last step. |
-| `E` | **Explore mode:** free orbit, pan and zoom around the current scene. |
-| `Esc` | Leave explore mode and snap back to the current step's camera. |
+| Drag / scroll | **Explore:** free orbit, pan and zoom around the current scene, always available. |
+| `R` / `Esc` | Glide back to the current step's camera (replays the step when already there). |
+| → / ← while exploring | Snap back into the sequence and move on. |
 | `F` | Fullscreen. |
 | `P` | Open the presenter view. |
+
+The keys sit faintly in the stage's corner and brighten when the mouse moves.
 
 ### 6.3 Presenter view
 - A second browser window, synced to the main one, showing:

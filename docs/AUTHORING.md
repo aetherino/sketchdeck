@@ -146,8 +146,8 @@ There are no AWS icons; use a glyph (`server`, `database`, `cloud`) with an "AWS
 | → / Space / PageDown | Next step. Pressing again during the animation finishes it. |
 | ← / PageUp | Previous step, already settled. |
 | Home / End | First / last step. |
-| R | Replay this step. |
-| E / Esc | Explore freely / glide back to the step's camera. |
+| R | Replay this step, or glide back if you wandered off. |
+| Drag / R or Esc | Explore freely (always on) / glide back to the step's camera; arrows also snap back. |
 | F | Fullscreen. |
 | P | Open the presenter view (notes, next step, timer) in a second window. |
 
